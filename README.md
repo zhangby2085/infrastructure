@@ -30,4 +30,5 @@ Layout
 ## UI/application ("data product")
 
 * Could we use [Firebase](http://firebase.google.com) as backend?
+* [mLabs](https://mlab.com/)
 * [Sigma.js](http://sigmajs.org/), [D3.js](https://bl.ocks.org/mbostock/4062045), or [GEXF.js](https://github.com/raphv/gexf-js) for visualizing the network

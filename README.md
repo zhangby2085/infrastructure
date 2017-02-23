@@ -32,3 +32,10 @@ Layout
 * Could we use [Firebase](http://firebase.google.com) as backend?
 * [mLabs](https://mlab.com/)
 * [Sigma.js](http://sigmajs.org/), [D3.js](https://bl.ocks.org/mbostock/4062045), or [GEXF.js](https://github.com/raphv/gexf-js) for visualizing the network
+
+# HPC infrastrucure
+
+Two main sources for high performance computing resources are available: CSC and TCSC
+
+* [Webinar: Creating a Virtual Machine in cPouta](https://www.youtube.com/watch?v=CIO8KRbgDoI&index=5&list=PLD5XtevzF3yHz-4PF_qBN3g26K7RzLO_c)
+

@@ -1,4 +1,31 @@
-Example to get all the records from HICSS
+# Extract data from DBLP  
+Use the script `extractconferencedata.sh` in `component_DBLP` folder to extract DBLP data of the given conference. 
+
+Example:
+
+<pre><code>
+zzz@yyy:~/xxx/cobweb/dblp$ mkdir HICSS
+zzz@yyy:~/xxx/cobweb/dblp$ cd HICSS
+zzz@yyy:~/xxx/cobweb/dblp/HICSS$ 
+zzz@yyy:~/xxx/cobweb/dblp/HICSS$
+zzz@yyy:~/xxx/cobweb/dblp/HICSS$ ../extractconferencedata.sh  HICSS
+zzz@yyy:~/xxx/cobweb/dblp/HICSS$ ls
+HICSS_authors.txt  HICSS_years.txt  HICSS_titles.txt
+</code></pre>  
+
+To run this script, please make sure you have already parsed the whole DBLP data and all the results are in the up folder `../`
+
+<pre><code>
+zzz@yyy:~/xxx/cobweb/dblp/HICSS$ ls ../*txt
+../authors.txt  ../booktitle.txt  ../title.txt  ../year.txt
+</code></pre>
+
+NOTE:  
+This is just a pre-process the data, there might be some issues there. Please double check the result before using, such as if the number of records are same, etc.  
+
+For example, there is a minor issue with the data extract from HICSS:  
+
+Manually get all the records from HICSS
 
 1. run getConf.py to generate the booktitle.txt which contains all the conference records
 2. Check how many lines of HICSS records

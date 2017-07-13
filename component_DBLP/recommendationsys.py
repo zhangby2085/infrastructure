@@ -64,9 +64,11 @@ class recommendationsys:
         resentpub = []
 
         if isinstance(name, unicode):
-             idx = self.authors.index(name)
+             #idx = self.authors.index(name)
+             idx = self.authordict.get(name)
         else:
-             idx = self.authors.index(name.decode('utf-8'))        
+             #idx = self.authors.index(name.decode('utf-8'))  
+             idx = self.authordict.get(name.decode('utf-8'))
         
         idx = self.authortitlesidx[idx]
     
@@ -103,9 +105,11 @@ class recommendationsys:
     
     def keyword(self,name):
         if isinstance(name, unicode):
-             idx = self.authors.index(name)
+             #idx = self.authors.index(name)
+             idx = self.authordict.get(name)
         else:
-             idx = self.authors.index(name.decode('utf-8'))
+             #idx = self.authors.index(name.decode('utf-8'))  
+             idx = self.authordict.get(name.decode('utf-8'))
              
 #        content = self.authorcontents[idx].lower()
 #        
@@ -196,9 +200,11 @@ class recommendationsys:
     """
     def mycoauthorsV2(self, name):
         if isinstance(name, unicode):
-             idx = self.authors.index(name)
+             #idx = self.authors.index(name)
+             idx = self.authordict.get(name)
         else:
-             idx = self.authors.index(name.decode('utf-8'))
+             #idx = self.authors.index(name.decode('utf-8'))  
+             idx = self.authordict.get(name.decode('utf-8'))
              
         coauthorship = self.coauthornetV2[idx]
         uniqcoauthors = np.array(list(set(coauthorship)))
@@ -223,9 +229,11 @@ class recommendationsys:
     """
     def mycoauthorsV3(self, name):
         if isinstance(name, unicode):
-             idx = self.authors.index(name)
+             #idx = self.authors.index(name)
+             idx = self.authordict.get(name)
         else:
-             idx = self.authors.index(name.decode('utf-8'))
+             #idx = self.authors.index(name.decode('utf-8'))  
+             idx = self.authordict.get(name.decode('utf-8'))
              
         coauthors = []
         for i in self.coauthorsidx:
@@ -245,6 +253,34 @@ class recommendationsys:
         for i in range(len(coauthorcount)):
             result.append(OrderedDict([("name",self.authors[unicoauthors[-(i+1)]]),("cooperationCount",coauthorcount[-(i+1)])]))
         return (result,list(unicoauthors[::-1]),list(coauthorcount[::-1]))
+
+    """
+    """
+    def mycoauthorsV4(self, name):
+        if isinstance(name, unicode):
+             idx = self.authordict.get(name)
+        else:
+             idx = self.authordict.get(name.decode('utf-8'))
+             
+        coauthors = []
+        for i in self.coauthorsidx:
+            if idx in i:
+                # remove itself
+                t = i[:]
+                t.remove(idx)
+                coauthors.extend(t)
+                
+        coauthors = np.array(coauthors)
+        unicoauthors, coauthorcount = np.unique(coauthors, return_counts=True)
+        
+        unicoauthors = unicoauthors[coauthorcount.argsort()]
+        coauthorcount.sort()
+        
+        result = []
+        for i in range(len(coauthorcount)):
+            result.append(OrderedDict([("name",self.authors[unicoauthors[-(i+1)]]),("cooperationCount",coauthorcount[-(i+1)])]))
+        return (result,list(unicoauthors[::-1]),list(coauthorcount[::-1]))
+    
      
 
     """
@@ -341,7 +377,7 @@ class recommendationsys:
         # end use codecs
                 
         # filename = './CHI/CHI_authors.txt'
-        
+        self.authordict = {}
         self.authors = []
         self.authorcontents = []
         self.authorrawcontents = []
@@ -371,6 +407,7 @@ class recommendationsys:
         
         # read authors
         i = 0
+        m = 0
         f = codecs.open(self.f_authors,'r','utf-8')
         for line in f:
             # split the authors by ','
@@ -384,23 +421,48 @@ class recommendationsys:
             authoridx = []
             
             for name in newline:  
-                if name not in self.authors:
-                    self.authors.append(name)
-                    self.authorcontents.append(self.titles[i])
-                    self.authorrawcontents.append(self.rawtitles[i])
-                    self.authortitlesidx.append([i])
-                    idx = self.authors.index(name)
-                else:    
-                    idx = self.authors.index(name)
+                
+                # list version
+#                if name not in self.authors:
+#                    self.authors.append(name)
+#                    self.authorcontents.append(self.titles[i])
+#                    self.authorrawcontents.append(self.rawtitles[i])
+#                    self.authortitlesidx.append([i])
+#                    #idx = self.authors.index(name)
+#                    #print 'idx: ' + str(idx) + ' m: ' + str(m)
+#                    idx = m
+#                    m = m + 1
+#                else:    
+#                    idx = self.authors.index(name)
+#                    self.authortitlesidx[idx].append(i)
+#                    self.authorcontents[idx] = ' '.join([self.authorcontents[idx],self.titles[i]])
+#                    self.authorrawcontents[idx] = ' '.join([self.authorrawcontents[idx],self.rawtitles[i]])
+#                authoridx.append(idx)
+                # end list version 
+                
+                # dictonary version 
+                idx = self.authordict.get(name)
+                if idx:
                     self.authortitlesidx[idx].append(i)
                     self.authorcontents[idx] = ' '.join([self.authorcontents[idx],self.titles[i]])
                     self.authorrawcontents[idx] = ' '.join([self.authorrawcontents[idx],self.rawtitles[i]])
+                else:
+                    self.authors.append(name)
+                    self.authordict.update({name:m})
+                    self.authorcontents.append(self.titles[i])
+                    self.authorrawcontents.append(self.rawtitles[i])
+                    self.authortitlesidx.append([i])
+                    #idx = self.authors.index(name)
+                    #print 'idx: ' + str(idx) + ' m: ' + str(m)
+                    idx = m
+                    m = m + 1
                 authoridx.append(idx)
+                # end  dict version
                 
             self.coauthorsidx.append(authoridx)
             self.updatecoauthornetworkV2(self.coauthornetV2,self.authors,namelist)
             i = i + 1
-            #print i
+            print i
         # end use codecs
         #self.coauthornet = self.coauthornet[0:len(self.authors), 0:len(self.authors)];
             
@@ -435,10 +497,11 @@ class recommendationsys:
     def recommendationV2(self, name, n):
         
         if isinstance(name, unicode):
-            authorIdx = self.authors.index(name)
+             #idx = self.authors.index(name)
+             authorIdx = self.authordict.get(name)
         else:
-            name = name.decode('utf-8')
-            authorIdx = self.authors.index(name)
+             #idx = self.authors.index(name.decode('utf-8'))  
+             authorIdx = self.authordict.get(name.decode('utf-8'))
         #content=[]
     
         self.myidx = authorIdx  
@@ -838,7 +901,8 @@ class recommendationsys:
             #coauthorsjson = []
             #[coauthors, idx, c] = self.mycoauthors(name)
             #[coauthors, idx, c] = self.mycoauthorsV2(name)
-            [coauthors, idx, c] = self.mycoauthorsV3(name)
+            #[coauthors, idx, c] = self.mycoauthorsV3(name)
+            [coauthors, idx, c] = self.mycoauthorsV4(name)
 
             # remove the coauthors  
             if idx.count(self.myidx):

@@ -41,8 +41,9 @@ class recommendationsys:
         
         # by default we will filter out those don't have publications in recent 10 years
         self.activityyear = 10
-        
 
+        self.debug = 0        
+        
         #----------------------
         self.f_titles = f_titles
         self.f_authors = f_authors
@@ -55,12 +56,15 @@ class recommendationsys:
         self.keywordthreshold = 10
         #----------------------        
         
+        print 'start init\n'
         self.docluster()
         self.initNLTKConditionalFreqDist()
         
         self.filterN = len(self.authors)
+        print 'end init\n'
 
     def resentpublications(self,name):
+        #print 'start recentpublications\n'
         resentpub = []
 
         if isinstance(name, unicode):
@@ -93,17 +97,21 @@ class recommendationsys:
                 authorsjson.append(OrderedDict([("name",author)]))
             resentpub.append(OrderedDict([("title",self.rawtitles[i]),("authors",authorsjson), ("year",self.years[i]),("publicationVenue",self.booktitle[i])]))
 
+        #print 'end recentpublications\n'
         return resentpub
         
     def initNLTKConditionalFreqDist(self):
+        print 'start initNLTK CFD\n'
         pairs=[]
 
         for title in self.titles:
             pairs = pairs + list(nltk.bigrams(title.split()))
     
         self.cfd = nltk.ConditionalFreqDist(pairs)
+        print 'end initNLTK CFD\n'
     
     def keyword(self,name):
+        #print 'start  keyword\n'
         if isinstance(name, unicode):
              #idx = self.authors.index(name)
              idx = self.authordict.get(name)
@@ -165,9 +173,11 @@ class recommendationsys:
             contentjson.append(OrderedDict([("topic", topic[0])]))
         
         #print 'end bigram\n'
+        #print 'end  keyword\n'
         return contentjson
         
     def bigramkeywords(self, text):
+        #print 'start  bigramkeyword\n'
         # bigram keywords -------------
         #content = text.lower().split()
         content = text
@@ -194,6 +204,7 @@ class recommendationsys:
                 finalkeywords.append((' '.join(p[0]),p[1],keywords.count(p)))
                 
         finalkeywords.reverse()    
+        #print 'end  bigramkeyword\n'
         return finalkeywords
        
     """
@@ -257,6 +268,7 @@ class recommendationsys:
     """
     """
     def mycoauthorsV4(self, name):
+        print 'start  mycoauthorsV4 \n'
         if isinstance(name, unicode):
              idx = self.authordict.get(name)
         else:
@@ -279,6 +291,8 @@ class recommendationsys:
         result = []
         for i in range(len(coauthorcount)):
             result.append(OrderedDict([("name",self.authors[unicoauthors[-(i+1)]]),("cooperationCount",coauthorcount[-(i+1)])]))
+        
+        print 'end  mycoauthorsV4 \n'
         return (result,list(unicoauthors[::-1]),list(coauthorcount[::-1]))
     
      
@@ -363,7 +377,7 @@ class recommendationsys:
         
         
         # filename = './CHI/CHI_titles.txt'
-        
+        print 'start  titles \n'
         f = codecs.open(self.f_titles,'r','utf-8')
         for line in f:   
             # remove the '.,\r\n' at the end
@@ -390,6 +404,7 @@ class recommendationsys:
         self.coauthornetV2 = []
         
         # read years
+        print 'start  year \n'
         self.years = []
         f = codecs.open(self.f_years,'r','utf-8')
         for line in f:
@@ -398,6 +413,7 @@ class recommendationsys:
             self.years.append(line)
             
         # read conference 
+            print 'start  booktitle \n'
         self.booktitle = []
         f = codecs.open(self.f_booktitle,'r','utf-8')
         for line in f:
@@ -406,6 +422,7 @@ class recommendationsys:
             self.booktitle.append(line)
         
         # read authors
+        print 'start  authors \n'
         i = 0
         m = 0
         f = codecs.open(self.f_authors,'r','utf-8')
@@ -444,13 +461,23 @@ class recommendationsys:
                 idx = self.authordict.get(name)
                 if idx:
                     self.authortitlesidx[idx].append(i)
-                    self.authorcontents[idx] = ' '.join([self.authorcontents[idx],self.titles[i]])
-                    self.authorrawcontents[idx] = ' '.join([self.authorrawcontents[idx],self.rawtitles[i]])
+                    #self.authorcontents[idx] = ' '.join([self.authorcontents[idx],self.titles[i]])
+                    #self.authorrawcontents[idx] = ' '.join([self.authorrawcontents[idx],self.rawtitles[i]])
+                    #self.authorcontents[idx].append(self.titles[i])
+                    #self.authorrawcontents[idx].append(self.rawtitles[i])
+                    self.authorcontents[idx] = self.authorcontents[idx] + ' ' + self.titles[i]
+                    self.authorrawcontents[idx] = self.authorrawcontents[idx] + ' ' + self.rawtitles[i]
                 else:
                     self.authors.append(name)
-                    self.authordict.update({name:m})
+                    #self.authordict.update({name:m})
+                    self.authordict[name] = m
+                    #self.authorcontents.append(self.titles[i])
+                    #self.authorrawcontents.append(self.rawtitles[i])
+                    #self.authorcontents.append([self.titles[i]])
+                    #self.authorrawcontents.append([self.rawtitles[i]])
                     self.authorcontents.append(self.titles[i])
                     self.authorrawcontents.append(self.rawtitles[i])
+                    
                     self.authortitlesidx.append([i])
                     #idx = self.authors.index(name)
                     #print 'idx: ' + str(idx) + ' m: ' + str(m)
@@ -460,12 +487,13 @@ class recommendationsys:
                 # end  dict version
                 
             self.coauthorsidx.append(authoridx)
-            self.updatecoauthornetworkV2(self.coauthornetV2,self.authors,namelist)
+            #self.updatecoauthornetworkV2(self.coauthornetV2,self.authors,namelist)
             i = i + 1
             print i
         # end use codecs
         #self.coauthornet = self.coauthornet[0:len(self.authors), 0:len(self.authors)];
-            
+           
+        #return
                 
         self.vectorizer = CountVectorizer(max_df=0.95, min_df=1,stop_words='english')
         
@@ -502,13 +530,16 @@ class recommendationsys:
         else:
              #idx = self.authors.index(name.decode('utf-8'))  
              authorIdx = self.authordict.get(name.decode('utf-8'))
+             name = name.decode('utf-8')
         #content=[]
     
         self.myidx = authorIdx  
         
         featuretfidf = self.tfidfarray[authorIdx]
         
+        print 'start distance computing \n'
         (self.closeauthors, self.closeauthordis) = self.nNNlinesearch(self.tfidfarray,featuretfidf,0)
+        print 'end distance computing \n'
         
         self.recommendauthor = []
         for i in self.closeauthors:
@@ -538,12 +569,14 @@ class recommendationsys:
             if i>20:
                 break;
                 
+        print 'filter recommendtion \n'
         tmpremd = self.filteredrecommendations(self.filterN)
         
+        print 'threshold recommendtion \n'
         newrecommendations = self.thresholdrecommendations(tmpremd,n)
     
         self.result=OrderedDict([("name",name),("recommendations",newrecommendations)])        
-        
+        print 'end recommendationV2 \n'
         return self.result    
     
     """

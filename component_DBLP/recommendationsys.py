@@ -105,8 +105,10 @@ class recommendationsys:
         print 'start initNLTK CFD\n'
         pairs=[]
 
-        for title in self.titles:
-            pairs = pairs + list(nltk.bigrams(title.split()))
+#        for title in self.titles:
+#            pairs = pairs + list(nltk.bigrams(title.split()))
+
+        pairs = nltk.bigrams(self.allcorp)
     
         self.cfd = nltk.ConditionalFreqDist(pairs)
         print 'end initNLTK CFD\n'
@@ -345,9 +347,11 @@ class recommendationsys:
 
         if scipy.sparse.issparse(a):
             a = a.toarray()
+            a = a[0]
             
         if scipy.sparse.issparse(b):
             b = b.toarray()
+            b = b[0]
         
         a = np.array(a);
         b = np.array(b);
@@ -380,6 +384,7 @@ class recommendationsys:
         #titledict={}
         self.rawtitles = []
         self.titles = []
+        self.allcorp = []
         #newtitles = []
         sw = set(nltk.corpus.stopwords.words('english'))
         
@@ -393,6 +398,7 @@ class recommendationsys:
             self.rawtitles.append(line)
             line = line.lower()
             newline=tokenizer.tokenize(line)
+            self.allcorp = self.allcorp + newline
             # collect all the words except digtals and stopwords
             newline= ' '.join([w for w in newline if (w.lower() not in sw) & ~(self.digstring(w))])
             self.titles.append(newline)

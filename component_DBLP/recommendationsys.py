@@ -18,6 +18,7 @@ from sklearn.cluster import KMeans
 from collections import OrderedDict
 
 import numpy as np
+import scipy
 
 import json
 import itertools
@@ -268,7 +269,7 @@ class recommendationsys:
     """
     """
     def mycoauthorsV4(self, name):
-        print 'start  mycoauthorsV4 \n'
+        
         if isinstance(name, unicode):
              idx = self.authordict.get(name)
         else:
@@ -292,7 +293,7 @@ class recommendationsys:
         for i in range(len(coauthorcount)):
             result.append(OrderedDict([("name",self.authors[unicoauthors[-(i+1)]]),("cooperationCount",coauthorcount[-(i+1)])]))
         
-        print 'end  mycoauthorsV4 \n'
+        
         return (result,list(unicoauthors[::-1]),list(coauthorcount[::-1]))
     
      
@@ -341,6 +342,13 @@ class recommendationsys:
     compute the distance between two points a and b
     """
     def distance(self,a,b):
+
+        if scipy.sparse.issparse(a):
+            a = a.toarray()
+            
+        if scipy.sparse.issparse(b):
+            b = b.toarray()
+        
         a = np.array(a);
         b = np.array(b);
         return np.sqrt(sum(np.square(a - b)))
@@ -413,7 +421,7 @@ class recommendationsys:
             self.years.append(line)
             
         # read conference 
-            print 'start  booktitle \n'
+        print 'start  booktitle \n'
         self.booktitle = []
         f = codecs.open(self.f_booktitle,'r','utf-8')
         for line in f:
@@ -499,14 +507,16 @@ class recommendationsys:
         
         X = self.vectorizer.fit_transform(self.authorcontents)
         
-        Xarray = X.toarray()
+        #Xarray = X.toarray()
+        Xarray = X
         
         #plt.plot(hist)
         
         transformer = TfidfTransformer()
         
         self.tfidf = transformer.fit_transform(Xarray)
-        self.tfidfarray = self.tfidf.toarray()
+        #self.tfidfarray = self.tfidf.toarray()
+        self.tfidfarray = self.tfidf
         
         self.featurenames = self.vectorizer.get_feature_names()
         

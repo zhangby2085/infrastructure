@@ -17,6 +17,8 @@ from sklearn.cluster import KMeans
 
 from collections import OrderedDict
 
+from sklearn.metrics import pairwise_distances
+
 import numpy as np
 import scipy
 
@@ -203,13 +205,58 @@ class recommendationsys:
         
         finalkeywords=[]
         for p in keywords:
-            if (p[1]>=2):
-                finalkeywords.append((' '.join(p[0]),p[1],keywords.count(p)))
+            if (p[1]>=25) or (userpairs.count(p[0])>1):
+                finalkeywords.append([' '.join(p[0]),p[1],userpairs.count(p[0])])
                 
         finalkeywords.reverse()    
+        
+        # deal with plural
+        pluralidx = self.findpluralbigram(finalkeywords)
+        
+        self.removepluralbigram(finalkeywords,pluralidx)
+        
+        
         #print 'end  bigramkeyword\n'
         return finalkeywords
        
+    """
+    """
+    def removepluralbigram(self, bigram, pluralidx):
+        for i in pluralidx:
+            delcount = 0
+            for n in i[1:]:
+                bigram[i[0]][1] = bigram[i[0]][1] + bigram[n-delcount][1]
+                bigram.remove(bigram[n-delcount])
+                delcount = delcount + 1
+            
+    
+    """
+    """
+    def findpluralbigram(self, keywordsinfo):
+        c = []
+        for i in keywordsinfo:
+            t = i[0].split()
+            t1 = ''
+            for n in t:
+                if n[-1] == 's':
+                    n = n[:-1]
+                t1 = t1 + n
+
+            c.append(t1)
+            
+        uniqbigram = list(set(c))
+        pluralidx = []
+        
+        for i in uniqbigram:
+            count = c.count(i)
+            if count > 1:
+                cc = []
+                for n in range(len(c)):
+                    if i == c[n]:
+                        cc.append(n)
+                pluralidx.append(cc)
+         
+        return pluralidx
     """
     """
     def mycoauthorsV2(self, name):
@@ -398,7 +445,10 @@ class recommendationsys:
             self.rawtitles.append(line)
             line = line.lower()
             newline=tokenizer.tokenize(line)
-            self.allcorp = self.allcorp + newline
+            
+            for corp in newline:
+                self.allcorp.append(corp)
+            
             # collect all the words except digtals and stopwords
             newline= ' '.join([w for w in newline if (w.lower() not in sw) & ~(self.digstring(w))])
             self.titles.append(newline)
@@ -539,7 +589,7 @@ class recommendationsys:
     """
     """
     def recommendationV2(self, name, n):
-        
+        print 'find the idx'
         if isinstance(name, unicode):
              #idx = self.authors.index(name)
              authorIdx = self.authordict.get(name)
@@ -550,7 +600,7 @@ class recommendationsys:
         #content=[]
     
         self.myidx = authorIdx  
-        
+        print 'get the feature vector'
         featuretfidf = self.tfidfarray[authorIdx]
         
         print 'start distance computing \n'
@@ -602,10 +652,12 @@ class recommendationsys:
     def nNNlinesearch(self, space, p, n):
         closeauthordis = []
             
-        for i in space:
-            closeauthordis.append(self.distance(p,i))
+#        for i in space:
+#            closeauthordis.append(self.distance(p,i))
             
-        closeauthordis = np.array(closeauthordis)
+        closeauthordis = pairwise_distances(space, p)
+        closeauthordis = closeauthordis.flatten()
+        #closeauthordis = np.array(closeauthordis)
             
         closeauthors = closeauthordis.argsort()
 

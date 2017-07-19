@@ -45,7 +45,8 @@ class recommendationsys:
         # by default we will filter out those don't have publications in recent 10 years
         self.activityyear = 10
 
-        self.debug = 0        
+        self.debug = 0       
+        self.nremd = 3
         
         #----------------------
         self.f_titles = f_titles
@@ -59,13 +60,55 @@ class recommendationsys:
         self.keywordthreshold = 10
         #----------------------        
         
-        print 'start init\n'
+        self.debugmsg('start init', 0)
         self.docluster()
         self.initNLTKConditionalFreqDist()
         
         self.filterN = len(self.authors)
-        print 'end init\n'
+        self.debugmsg('end init\n', 0)
+        
+        
+    """
+    """
+    def debugmsg(self, msg, lvl):
+        if self.debug <= lvl:
+            print msg
+    
+    """
+    """    
+    def resentpublicationsidx(self,authoridx):
+        #print 'start recentpublications\n'
+        resentpub = []
+        
+        idx = self.authortitlesidx[authoridx]
+    
+        # sort by years
+        years = [self.years[i] for i in idx]
+        years = np.array(years)
+        years = years.argsort()
+        idx = np.array(idx)[years]
+        idx = idx.tolist()
+        idx.reverse()
+        
+        # if the most recent publication is before the 'nyears' 
+        # remove this one from the list
+        if (int(self.years[idx[0]]) < self.nyear) or (len(idx) < self.npaper):
+            return resentpub
+        # ----  
+        
+        for i in idx:
+            authorsjson = []      
+        
+            for author in self.coathors[i]:
+                authorsjson.append(OrderedDict([("name",author)]))
+            resentpub.append(OrderedDict([("title",self.rawtitles[i]),("authors",authorsjson), ("year",self.years[i]),("publicationVenue",self.booktitle[i])]))
 
+        #print 'end recentpublications\n'
+        return resentpub
+    
+    
+    """
+    """
     def resentpublications(self,name):
         #print 'start recentpublications\n'
         resentpub = []
@@ -104,7 +147,7 @@ class recommendationsys:
         return resentpub
         
     def initNLTKConditionalFreqDist(self):
-        print 'start initNLTK CFD\n'
+        self.debugmsg('start initNLTK CFD\n', 0)
         pairs=[]
 
 #        for title in self.titles:
@@ -113,7 +156,7 @@ class recommendationsys:
         pairs = nltk.bigrams(self.allcorp)
     
         self.cfd = nltk.ConditionalFreqDist(pairs)
-        print 'end initNLTK CFD\n'
+        self.debugmsg('end initNLTK CFD\n', 0)
     
     def keyword(self,name):
         #print 'start  keyword\n'
@@ -180,7 +223,26 @@ class recommendationsys:
         #print 'end bigram\n'
         #print 'end  keyword\n'
         return contentjson
+    
+    """
+    """
+    def keywordbyidx(self,idx):
+             
+        contentjson = []
+            
+        # bigram keywords -------------
+        content = self.authorcontents[idx].lower().split()
+        finalkeywords = self.bigramkeywords(content)
         
+        for topic in finalkeywords:
+            #print topic[0]
+            contentjson.append(OrderedDict([("topic", topic[0])]))
+        
+        return contentjson
+
+    
+    """
+    """    
     def bigramkeywords(self, text):
         #print 'start  bigramkeyword\n'
         # bigram keywords -------------
@@ -191,29 +253,40 @@ class recommendationsys:
         userpairs = list(nltk.bigrams(content))
                 
        
-        # do the same on raw titles 
-        
+        # in case there is no valid keywords due to our requirement
+        # the one with highest occurrence will be pick from the backup plan 
+        keywordsbackup = []
+        # the valid keywords
         keywords=[]
         for p in userpairs:
             pairsdic=self.cfd[p[0]]
             n=pairsdic[p[1]]
             if n>=self.keywordthreshold:
                 keywords.append((p,n))
-            
+            keywordsbackup.append((p,n))
+
+        finalkeywords=[]
+        
         uniqkeywords=set(keywords)
         keywords=sorted(uniqkeywords, key=lambda keywords: keywords[1])
-        
-        finalkeywords=[]
         for p in keywords:
             if (p[1]>=25) or (userpairs.count(p[0])>1):
                 finalkeywords.append([' '.join(p[0]),p[1],userpairs.count(p[0])])
                 
-        finalkeywords.reverse()    
+        finalkeywords.reverse()        
         
-        # deal with plural
-        pluralidx = self.findpluralbigram(finalkeywords)
         
-        self.removepluralbigram(finalkeywords,pluralidx)
+        
+        if not finalkeywords:
+            # found valid keywords
+            uniqkeywords=set(keywordsbackup)
+            keywordsbackup=sorted(uniqkeywords, key=lambda keywordsbackup: keywordsbackup[1])
+            finalkeywords.append([' '.join(keywordsbackup[-1][0]), keywordsbackup[-1][1],userpairs.count(keywordsbackup[0])])
+        else:        
+            # deal with plural
+            pluralidx = self.findpluralbigram(finalkeywords)
+        
+            self.removepluralbigram(finalkeywords,pluralidx)
         
         
         #print 'end  bigramkeyword\n'
@@ -345,6 +418,31 @@ class recommendationsys:
         
         return (result,list(unicoauthors[::-1]),list(coauthorcount[::-1]))
     
+    """
+    """
+    def mycoauthorsV4byidx(self, idx):
+        
+        coauthors = []
+        for i in self.coauthorsidx:
+            if idx in i:
+                # remove itself
+                t = i[:]
+                t.remove(idx)
+                coauthors.extend(t)
+                
+        coauthors = np.array(coauthors)
+        unicoauthors, coauthorcount = np.unique(coauthors, return_counts=True)
+        
+        unicoauthors = unicoauthors[coauthorcount.argsort()]
+        coauthorcount.sort()
+        
+        result = []
+        for i in range(len(coauthorcount)):
+            result.append(OrderedDict([("name",self.authors[unicoauthors[-(i+1)]]),("cooperationCount",coauthorcount[-(i+1)])]))
+        
+        
+        return (result,list(unicoauthors[::-1]),list(coauthorcount[::-1]))
+        
      
 
     """
@@ -437,7 +535,7 @@ class recommendationsys:
         
         
         # filename = './CHI/CHI_titles.txt'
-        print 'start  titles \n'
+        self.debugmsg('start  titles \n', 0)
         f = codecs.open(self.f_titles,'r','utf-8')
         for line in f:   
             # remove the '.,\r\n' at the end
@@ -468,7 +566,7 @@ class recommendationsys:
         self.coauthornetV2 = []
         
         # read years
-        print 'start  year \n'
+        self.debugmsg('start  year \n', 0)
         self.years = []
         f = codecs.open(self.f_years,'r','utf-8')
         for line in f:
@@ -477,7 +575,7 @@ class recommendationsys:
             self.years.append(line)
             
         # read conference 
-        print 'start  booktitle \n'
+        self.debugmsg('start  booktitle \n', 0)
         self.booktitle = []
         f = codecs.open(self.f_booktitle,'r','utf-8')
         for line in f:
@@ -486,7 +584,7 @@ class recommendationsys:
             self.booktitle.append(line)
         
         # read authors
-        print 'start  authors \n'
+        self.debugmsg('start  authors \n', 0)
         i = 0
         m = 0
         f = codecs.open(self.f_authors,'r','utf-8')
@@ -553,7 +651,7 @@ class recommendationsys:
             self.coauthorsidx.append(authoridx)
             #self.updatecoauthornetworkV2(self.coauthornetV2,self.authors,namelist)
             i = i + 1
-            print i
+            #print i
         # end use codecs
         #self.coauthornet = self.coauthornet[0:len(self.authors), 0:len(self.authors)];
            
@@ -589,7 +687,7 @@ class recommendationsys:
     """
     """
     def recommendationV2(self, name, n):
-        print 'find the idx'
+        self.debugmsg('find the idx', 0)
         if isinstance(name, unicode):
              #idx = self.authors.index(name)
              authorIdx = self.authordict.get(name)
@@ -600,12 +698,12 @@ class recommendationsys:
         #content=[]
     
         self.myidx = authorIdx  
-        print 'get the feature vector'
+        self.debugmsg('get the feature vector', 0)
         featuretfidf = self.tfidfarray[authorIdx]
         
-        print 'start distance computing \n'
+        self.debugmsg('start distance computing \n', 0)
         (self.closeauthors, self.closeauthordis) = self.nNNlinesearch(self.tfidfarray,featuretfidf,0)
-        print 'end distance computing \n'
+        self.debugmsg('end distance computing \n', 0)
         
         self.recommendauthor = []
         for i in self.closeauthors:
@@ -617,7 +715,7 @@ class recommendationsys:
         except ValueError:
             selfidx = -1
             
-        print "selfidx is %d" % selfidx
+        self.debugmsg('selfidx is ' + str(selfidx), 0)
         
         if selfidx != -1:
             self.closeauthordis = np.delete(self.closeauthordis,selfidx)
@@ -635,16 +733,87 @@ class recommendationsys:
             if i>20:
                 break;
                 
-        print 'filter recommendtion \n'
+        self.debugmsg('filter recommendtion \n', 0)
         tmpremd = self.filteredrecommendations(self.filterN)
         
-        print 'threshold recommendtion \n'
+        self.debugmsg('threshold recommendtion \n', 0)
         newrecommendations = self.thresholdrecommendations(tmpremd,n)
     
         self.result=OrderedDict([("name",name),("recommendations",newrecommendations)])        
-        print 'end recommendationV2 \n'
+        self.debugmsg('end recommendationV2 \n', 0)
         return self.result    
     
+    
+    
+    """    
+    """
+    def recommendationV3(self, name, n):
+        self.nremd = n
+        self.debugmsg('Will generate recommendations in 3 groups and ' + str(n) + ' for each group', 1)
+        self.debugmsg('find the idx', 0)
+        if isinstance(name, unicode):
+             #idx = self.authors.index(name)
+             authorIdx = self.authordict.get(name)
+        else:
+             #idx = self.authors.index(name.decode('utf-8'))  
+             authorIdx = self.authordict.get(name.decode('utf-8'))
+             name = name.decode('utf-8')
+        #content=[]
+    
+        self.myidx = authorIdx  
+        self.debugmsg('get the feature vector', 0)
+        featuretfidf = self.tfidfarray[authorIdx]
+        
+        self.debugmsg('start distance computing \n', 0)
+        (self.closeauthors, self.closeauthordis) = self.nNNlinesearch(self.tfidfarray,featuretfidf,0)
+        self.debugmsg('end distance computing \n', 0)
+
+        # here we can define the range to apply the otsu for recommendations
+        # for example self.closeauthordis[0:1000] or all them
+        self.debugmsg('start otsuifilter\n', 0)
+        splitidx = self.otsufilter(self.closeauthordis)   
+        self.debugmsg('end otsufilter\n', 0)                    
+        
+        # splitidx contains the first index of three groups, close, medium, far
+        # now generate three recommendations in each group
+        recommendations = []
+        
+        # save the valid remdidx
+        remdidx = []
+        for i in splitidx:
+            n = 0
+            backwardcount = 1
+            while n != self.nremd:
+                if self.closeauthors[i] != self.myidx:
+                    # skip myself go to next one
+                    remdinfo = self.getremdinfo(i)
+                    if remdinfo and ~remdidx.count(i):
+                        #print remdinfo
+                        recommendations.append(remdinfo)
+                        n = n + 1
+                        remdidx.append(i)
+                        self.debugmsg(str(n) + ' ' + str(i), 0)
+                        
+                i = i + 1
+                
+                # didn't find required number of valid remd untill the end
+                # start backwards search
+                if (i == len(self.closeauthordis)) or (backwardcount > 1):
+                    if backwardcount == 1:
+                        backwardstart = i - self.nremd
+                    i = backwardstart - backwardcount
+                    backwardcount = backwardcount + 1
+                    self.debugmsg('search backward ' + str(i), 0)
+        
+
+    
+    
+        self.result=OrderedDict([("name",name),("recommendations",recommendations)])        
+        self.debugmsg('end recommendationV3 \n', 0)
+        return self.result    
+      
+
+  
     """
         find n nearset neighbors of point p in given space using linear search
         if n == 0, sort all the points in space
@@ -962,6 +1131,53 @@ class recommendationsys:
         result=OrderedDict([("name",name),("recommendations",newrecommendations)])        
         
         return result
+
+    """
+        split the distance in to 3 groups using otsu filtering
+        return the first index of each group
+    """
+    def otsufilter(self, tdis):
+        trd = np.zeros(3, int)
+        
+        #tdis = self.filteredcloseauthordis()
+        t1 = filters.threshold_otsu(tdis)
+        t2 = filters.threshold_otsu(tdis[tdis>t1])
+         
+        # the first index of each group
+#        trd[1] = len(tdis[tdis<t1])
+#        trd[2] = len(tdis) - len(tdis[tdis>t2])
+        
+        # get the medium 3 in the medium group
+        # get the last 3 in the far group
+        trd[1] = int((len(tdis[tdis<t2]) - len(tdis[tdis<t1]))/2)-1
+        trd[2] = len(tdis) - 3         
+        
+        return trd
+
+    """
+        extract the detail inforamtion of the recommendation by its indx in
+        the closeauthors
+        ignor those unqualified ones which has few papers or not active 
+        recently, and also remove my co-authors
+    """
+    def getremdinfo(self, clsidx):
+        # get the author index from closeauthors
+        remdidx = self.closeauthors[clsidx]
+        
+        recentpub = self.resentpublicationsidx(remdidx)
+        
+        if recentpub:
+            name = self.authors[remdidx]
+            [coauthors, idx, c] = self.mycoauthorsV4byidx(remdidx)
+            
+            if idx.count(self.myidx):
+                # remove the coauthor
+                return []
+            
+            researchtopic = self.keywordbyidx(remdidx)
+            return OrderedDict([("name",name), ("relevancy",self.closeauthordis[clsidx]),("coAuthors",coauthors),("researchTopics",researchtopic), ("recentPublications",recentpub)])
+        else:
+            return []
 
     """
     """

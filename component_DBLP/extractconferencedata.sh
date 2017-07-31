@@ -11,8 +11,8 @@ function extractlines {
 
 # check the input args and print the usage
 if [ "$#" -lt 2 ]; then
-        echo "Usage: ./DBLPRecSys name conference1 conference2 conference3 ... "
-        echo "Example: ./DBLPRecSys \"Mike Jordan\" \"CHI\" \"HICSS\" "
+        echo "Usage: $0  name conference1 conference2 conference3 ... "
+        echo "Example: $0 Mike \"CHI\" \"HICSS\" "
 	exit
 fi
 

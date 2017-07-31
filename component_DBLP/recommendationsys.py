@@ -792,7 +792,7 @@ class recommendationsys:
                         recommendations.append(remdinfo)
                         n = n + 1
                         remdidx.append(i)
-                        self.debugmsg(str(n) + ' ' + str(i), 0)
+                        #self.debugmsg(str(n) + ' ' + str(i), 0)
                         
                 i = i + 1
                 
@@ -803,7 +803,7 @@ class recommendationsys:
                         backwardstart = i - self.nremd
                     i = backwardstart - backwardcount
                     backwardcount = backwardcount + 1
-                    self.debugmsg('search backward ' + str(i), 0)
+                    #self.debugmsg('search backward ' + str(i), 0)
         
 
     
@@ -824,7 +824,8 @@ class recommendationsys:
 #        for i in space:
 #            closeauthordis.append(self.distance(p,i))
             
-        closeauthordis = pairwise_distances(space, p)
+        #closeauthordis = pairwise_distances(space, p)
+        closeauthordis = pairwise_distances(space, p, metric='cosine')
         closeauthordis = closeauthordis.flatten()
         #closeauthordis = np.array(closeauthordis)
             
@@ -1322,7 +1323,7 @@ class recommendationsys:
         
     """
     """
-    def save_json(self,filename):
+    def save_json(self,filename):  
         with io.open(filename+'.json','w',encoding="utf-8") as outfile:
             outfile.write((json.dumps((self.result), ensure_ascii=False)))
    

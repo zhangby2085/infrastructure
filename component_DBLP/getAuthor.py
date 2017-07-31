@@ -40,7 +40,7 @@ def parserDblpXml(source,result):
      
  
 if __name__ == '__main__':
-    source = codecs.open('dblp.xml','r','utf-8')
+    source = codecs.open('./DBLPdataset/dblp.xml','r','utf-8')
     result = codecs.open('authors.txt','w','utf-8')
     parserDblpXml(source,result)
     result.close()

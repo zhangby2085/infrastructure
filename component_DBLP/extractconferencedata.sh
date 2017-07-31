@@ -60,8 +60,8 @@ for x in "$@"; do
 	fi
 
 	echo "Processing $x ..."
-	#result=`grep -n ^"$x"$ ./title_author_conf_year/booktitleLF.txt | cut -f1 -d:` 
-	result=`grep -nw "$x" ./title_author_conf_year/booktitleLF.txt | cut -f1 -d:` 
+	result=`grep -n ^"$x"$ ./title_author_conf_year/booktitleLF.txt | cut -f1 -d:` 
+	#result=`grep -nw "$x" ./title_author_conf_year/booktitleLF.txt | cut -f1 -d:` 
         if [ -z "$result" ]; then
                 printf "No conference found: $x\n"
                 continue

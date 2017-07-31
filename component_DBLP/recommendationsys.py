@@ -295,12 +295,24 @@ class recommendationsys:
     """
     """
     def removepluralbigram(self, bigram, pluralidx):
+        # if pluralidx is emtpy, just return
+        if not pluralidx:
+            print 'empty'
+            return 
+        
+        delcount = 0
+        pren = 0        
+
         for i in pluralidx:
-            delcount = 0
+            #delcount = 0
             for n in i[1:]:
-                bigram[i[0]][1] = bigram[i[0]][1] + bigram[n-delcount][1]
-                bigram.remove(bigram[n-delcount])
+                if n > pren:
+                    n = n - delcount
+
+                bigram[i[0]][1] = bigram[i[0]][1] + bigram[n][1]
+                bigram.remove(bigram[n])
                 delcount = delcount + 1
+                pren = n
             
     
     """
@@ -538,8 +550,8 @@ class recommendationsys:
         self.debugmsg('start  titles \n', 0)
         f = codecs.open(self.f_titles,'r','utf-8')
         for line in f:   
-            # remove the '.,\r\n' at the end
-            line = line[:-4]
+            # remove the '.,\n' at the end
+            line = line[:-3]
             self.rawtitles.append(line)
             line = line.lower()
             newline=tokenizer.tokenize(line)
@@ -1174,7 +1186,6 @@ class recommendationsys:
             if idx.count(self.myidx):
                 # remove the coauthor
                 return []
-            
             researchtopic = self.keywordbyidx(remdidx)
             return OrderedDict([("name",name), ("relevancy",self.closeauthordis[clsidx]),("coAuthors",coauthors),("researchTopics",researchtopic), ("recentPublications",recentpub)])
         else:

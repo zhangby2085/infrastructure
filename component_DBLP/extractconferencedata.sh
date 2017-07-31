@@ -86,14 +86,16 @@ if [ -z "$idx" ]; then
 	exit
 fi
 
-printf "Continue [Y/y]"
+#-----
+#printf "Continue [Y/y]"
 
-read input
+#read input
 
-if [ "$input" != "Y" ] && [ "$input" != "y" ]; then
-	printf "$input Exit\n"
-        exit
-fi
+#if [ "$input" != "Y" ] && [ "$input" != "y" ]; then
+#	printf "$input Exit\n"
+#        exit
+#fi
+#----
 
 printf "start processing....\n"
 

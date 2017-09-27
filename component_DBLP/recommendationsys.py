@@ -5,6 +5,7 @@ Created on Wed Apr 12 16:38:22 2017
 @author: secoder
 """
 import io
+import random
 
 import nltk
 from nltk.tokenize import RegexpTokenizer
@@ -633,7 +634,7 @@ class recommendationsys:
                 
                 # dictonary version 
                 idx = self.authordict.get(name)
-                if idx:
+                if idx is not None:
                     self.authortitlesidx[idx].append(i)
                     #self.authorcontents[idx] = ' '.join([self.authorcontents[idx],self.titles[i]])
                     #self.authorrawcontents[idx] = ' '.join([self.authorrawcontents[idx],self.rawtitles[i]])
@@ -818,7 +819,8 @@ class recommendationsys:
                     #self.debugmsg('search backward ' + str(i), 0)
         
 
-    
+    	# randomlize the order of the recommendations
+	random.shuffle(recommendations)
     
         self.result=OrderedDict([("name",name),("recommendations",recommendations)])        
         self.debugmsg('end recommendationV3 \n', 0)

@@ -14,7 +14,7 @@ for name in id_or_screen_name:
     FOLLOWERS_FILE_NAME = DIRECTORY + '/followers.json'
 
     FOLLOWERS = []
-    FOLLOWERS_CURSOR = tweepy.Cursor(API.followers_ids, id=id_or_screen_name, count=5000).items()
+    FOLLOWERS_CURSOR = tweepy.Cursor(API.followers_ids, id=name, count=5000).items()
 
     # get target user's followers
     while True:

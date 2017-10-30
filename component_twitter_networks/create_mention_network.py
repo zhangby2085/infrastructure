@@ -2,6 +2,7 @@ import json
 #import ijson
 import networkx as nx
 from config import id_or_screen_name,project_name,db_host,db_port,db_name,followerID_collection_name,id_name_collection_name,tweet_collection_name,tweet_num
+from config import project_target_name
 from pymongo import MongoClient
 
 PROJECT_DIRECTORY = 'output/project/' + project_name
@@ -18,8 +19,20 @@ client = MongoClient(db_host, db_port)
 # set the database name
 db = client[db_name]
 
+# extract the tweets from target user's follower
+project_target_name = project_target_name.split(' ')
+
+# find target user's follower IDs
+target_followers = []
+cursor = db[followerID_collection_name].find({"user":{"$in":project_target_name}})
+for doc in cursor:
+   target_followers.append(doc["followerID"])
+
+target_followers = list(set(target_followers))
+
+
 # retrive the id name mapping
-result = db[id_name_collection_name].find({},{"_id":0})
+result = db[id_name_collection_name].find({"id":{"$in":target_followers}},{"_id":0})
 
 ID_NAME = {}
 for doc in result:
@@ -43,10 +56,7 @@ def is_in_follower_list(user_id):
         return False
 
 
-if is_in_follower_list(923913109080813568):
-    print(11111)
-
-cursor = db[tweet_collection_name].find({},\
+cursor = db[tweet_collection_name].find({"user.id":{"$in":target_followers}},\
                      {\
                       "retweeted":1, "retweeted_status":1, "is_quote_status":1,\
                       "quoted_status":1,"entities":1, "_id":0, "user":1 \
@@ -88,9 +98,9 @@ for document in cursor:
 
     # add the connection betweetn the tweeter user and his/her mentioned names
     for name in mentioned_name:
-        print(name['name'])
-        print(name['id'])
-        print(tweeter_name)
+        #print(name['name'])
+        #print(name['id'])
+        #print(tweeter_name)
         if name['name'].casefold() != tweeter_name.casefold() and is_in_follower_list(name['id']):
             add_connection(tweeter_name.lower(), name['name'].lower())
             

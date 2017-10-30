@@ -6,6 +6,10 @@ id_or_screen_name = 'TampereUniTech TAMK_UAS UniTampere Tampere_3'
 # project name
 project_name = 'Tampere3'
 
+# the scope of the project, should be the same of the id_or_screen_name
+# or a sub set of it
+project_target_name = 'TampereUniTech'
+
 # mongoDB host
 db_host = 'localhost'
 

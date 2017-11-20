@@ -1,24 +1,43 @@
 import json
-import ijson
+#import ijson
 import networkx as nx
-from config import id_or_screen_name
+from config import id_or_screen_name,project_name,db_host,db_port,db_name,followerID_collection_name,id_name_collection_name,tweet_collection_name,tweet_num
+from config import project_target_name
+from pymongo import MongoClient
 
-DIRECTORY = 'output/' + id_or_screen_name
-FOLLOWERS_FILE_NAME = DIRECTORY + '/followers.json'
-FOLLOWER_NAMES_FILE_NAME = DIRECTORY + '/follower_names.json'
-TWEETS_FILE_NAME = DIRECTORY + '/followers_tweets.json'
-NETWORK_FILE_NAME = DIRECTORY + '/mention_filtered_intranetwork_retweet_and_others_v2.gexf'
+PROJECT_DIRECTORY = 'output/project/' + project_name
 
-TWEETS_COUNT = DIRECTORY + '/followers_tweets_count.json'
-MENTIONNAME_COUNT = DIRECTORY + '/followers_mentionname_count.json'
+NETWORK_FILE_NAME = PROJECT_DIRECTORY + '/mention_filtered_intranetwork_retweet_and_others_v2.gexf'
 
-with open(FOLLOWERS_FILE_NAME, encoding='utf-8') as file:
-    FOLLOWERS = json.load(file)
-with open(FOLLOWER_NAMES_FILE_NAME, encoding='utf-8') as file:
-    NAMES = json.load(file)
-with open(TWEETS_FILE_NAME, encoding='utf-8') as file:
-    # open file with ijson to be able to cope also with larger files
-    TWEETS = next(ijson.items(file, ''))
+TWEETS_COUNT = PROJECT_DIRECTORY + '/followers_tweets_count.json'
+MENTIONNAME_COUNT = PROJECT_DIRECTORY + '/followers_mentionname_count.json'
+
+
+# connect to localhost mongodb
+client = MongoClient(db_host, db_port)
+
+# set the database name
+db = client[db_name]
+
+# extract the tweets from target user's follower
+project_target_name = project_target_name.split(' ')
+
+# find target user's follower IDs
+target_followers = []
+cursor = db[followerID_collection_name].find({"user":{"$in":project_target_name}})
+for doc in cursor:
+   target_followers.append(doc["followerID"])
+
+target_followers = list(set(target_followers))
+
+
+# retrive the id name mapping
+result = db[id_name_collection_name].find({"id":{"$in":target_followers}},{"_id":0})
+
+ID_NAME = {}
+for doc in result:
+    ID_NAME[doc['id']] = doc
+
 
 GRAPH = nx.DiGraph()
 
@@ -29,57 +48,63 @@ def add_connection(user_from, user_to):
     # add +1 to connection weight
     GRAPH[user_from][user_to]['weight'] += 1
 
-def map_id_to_name(user_id):
-    if user_id in NAMES:
-        return NAMES[user_id]['screen_name']
-    print('Name not found for', user_id)
-    return None
 
-def is_in_follower_list(screen_name):
-    for k in NAMES:
-        if NAMES[k]['screen_name'] == screen_name:
-            return True
-    return False
+def is_in_follower_list(user_id):
+    if user_id in ID_NAME:
+        return True
+    else:
+        return False
 
-tw_count = []
-name_count = []
 
-# key = user_id, value = n latest tweets of that user
-for KEY, VALUE in TWEETS.items():
-    tweeter_name = map_id_to_name(KEY)
+cursor = db[tweet_collection_name].find({"user.id":{"$in":target_followers}},\
+                     {\
+                      "retweeted":1, "retweeted_status":1, "is_quote_status":1,\
+                      "quoted_status":1,"entities":1, "_id":0, "user":1 \
+                      } \
+        )
+
+for document in cursor:
+    KEY = document["user"]["id"]
+
+    tweeter_name = document["user"]["screen_name"]
+    
     if tweeter_name is None:
         print('Skipping', KEY)
         continue
+    
 
-    tw_count.append(len(VALUE))
+    # the list to save his/her mentioned names
     mentioned_name = []
-
+        
     # bulid the mentioned name list
-    for TWEET in VALUE:
+    #for TWEET in VALUE:
+    TWEET = document
         # if it is a retweet, only add the connection to the owner of the original tweet
         # not the other ones mentioned in the tweet
-        if TWEET['retweeted']:
-            mentioned_name.append(TWEET['retweeted_status']['user']['screen_name'])
-        elif TWEET['is_quote_status']:
-            for MENTIONED in TWEET['entities']['user_mentions']:            
-                mentioned_name.append(MENTIONED['screen_name'])
-            # if it is a quote, add the owner of the orignial tweet
-            try:
-                mentioned_name.append(TWEET['quoted_status']['user']['screen_name'])
-            except:
-                pass
-        else:
-            for MENTIONED in TWEET['entities']['user_mentions']:            
-                mentioned_name.append(MENTIONED['screen_name'])
+    if 'retweeted_status' in TWEET:
+        mentioned_name.append({"name":TWEET['retweeted_status']['user']['screen_name'],"id":TWEET['retweeted_status']['user']['id']})
+    elif 'quoted_status' in TWEET:
+        for MENTIONED in TWEET['entities']['user_mentions']:
+            mentioned_name.append({"name":MENTIONED['screen_name'],"id":MENTIONED['id']})
+        # if it is a quote, add the owner of the orignial tweet
+        try:
+            mentioned_name.append({"name":TWEET['quoted_status']['user']['screen_name'],"id":TWEET['quoted_status']['user']['id']})
+        except:
+            pass
+    else:
+        for MENTIONED in TWEET['entities']['user_mentions']:
+            mentioned_name.append({"name":MENTIONED['screen_name'],"id":MENTIONED['id']})
 
-    name_count.append(len(mentioned_name))
 
     # add the connection betweetn the tweeter user and his/her mentioned names
     for name in mentioned_name:
-        if name.casefold() != tweeter_name.casefold() and is_in_follower_list(name):
-            add_connection(tweeter_name.lower(), name.lower())
+        #print(name['name'])
+        #print(name['id'])
+        #print(tweeter_name)
+        if name['name'].casefold() != tweeter_name.casefold() and is_in_follower_list(name['id']):
+            add_connection(tweeter_name.lower(), name['name'].lower())
+            
 
 
 nx.readwrite.gexf.write_gexf(GRAPH, NETWORK_FILE_NAME, encoding='utf-8',
                              version='1.2draft')
-

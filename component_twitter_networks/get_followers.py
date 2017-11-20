@@ -2,16 +2,18 @@ import os
 import json
 import tweepy
 from get_tweepy_api import API
-from config import id_or_screen_name
+from config import id_or_screen_name,project_name,db_host,db_port,db_name,followerID_collection_name
 
+from pymongo import MongoClient
 
 id_or_screen_name = id_or_screen_name.split(' ')
 
+# connect to localhost mongodb
+client = MongoClient(db_host, db_port)
+
+db = client[db_name]
+
 for name in id_or_screen_name:
-    DIRECTORY = 'output/' + name
-    if not os.path.exists(DIRECTORY):
-        os.makedirs(DIRECTORY)
-    FOLLOWERS_FILE_NAME = DIRECTORY + '/followers.json'
 
     FOLLOWERS = []
     FOLLOWERS_CURSOR = tweepy.Cursor(API.followers_ids, id=name, count=5000).items()
@@ -20,12 +22,12 @@ for name in id_or_screen_name:
     while True:
         try:
             FOLLOWER = FOLLOWERS_CURSOR.next()
-            FOLLOWERS.append(FOLLOWER)
+            result = db[followerID_collection_name].insert_one({"followerID":FOLLOWER, "user":name})
         except StopIteration:
             break
 
-    print('User had', len(FOLLOWERS), 'followers')
+    print('Done for user: ', name)
 
-    with open(FOLLOWERS_FILE_NAME, 'w') as f:
-        json.dump(FOLLOWERS, f, indent=4)
+print('Done for all!')
+
 

@@ -6,7 +6,6 @@ Created on Wed Apr 12 16:38:22 2017
 """
 import io
 import random
-
 import nltk
 from nltk.tokenize import RegexpTokenizer
 
@@ -17,6 +16,7 @@ from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.cluster import KMeans
 
 from collections import OrderedDict
+from collections import Counter
 
 from sklearn.metrics import pairwise_distances
 
@@ -32,6 +32,8 @@ import cPickle as pickle
 import traceback
 
 from skimage import filters
+
+import unicodedata as ud
 
 class recommendationsys:
     
@@ -456,8 +458,266 @@ class recommendationsys:
         
         return (result,list(unicoauthors[::-1]),list(coauthorcount[::-1]))
         
-     
+    """
+    """
+    def mycoauthorsbyyear(self, idx, year):
+        
+        years = np.array(self.years)
 
+        yearidx = np.where(years <= year)[0]
+        coauthorsidx = [ self.coauthorsidx[i] for i in yearidx]
+        
+        coauthors = []
+        for i in coauthorsidx:
+            if idx in i:
+                # remove itself
+                t = i[:]
+                t.remove(idx)
+                coauthors.extend(t)
+                
+        coauthors = np.array(coauthors)
+        unicoauthors, coauthorcount = np.unique(coauthors, return_counts=True)
+        
+        unicoauthors = unicoauthors[coauthorcount.argsort()]
+        coauthorcount.sort()
+    
+        return (list(unicoauthors[::-1]),list(coauthorcount[::-1]))
+        
+    """
+        find the new coauthors for a user in current year against previous year
+        example: mynewcoauthors(23, 2014, 2015) will returen the new coauthors
+        in 2015 regarding the year 2014 for user 23. 23 is the index of a user
+    """
+    def mynewcoauthors(self, userIdx, yearPre, yearCur):
+        coauthornetPre, cp = self.mycoauthorsbyyear(userIdx, yearPre)
+
+        coauthornetCur, cc = self.mycoauthorsbyyear(userIdx, yearCur)
+
+        newCoauthors = np.setdiff1d(coauthornetCur, coauthornetPre)
+        
+        return newCoauthors
+
+    """
+        Call the weakties after mynewcoauthors() to find the common nodes 
+        between a user and his/her coming new coauthors in the year before
+        their coauthorship
+    """
+    def weakties(self, userX, userY, year):
+        
+        coauthornetX, cx = self.mycoauthorsbyyear(userX, year)
+        
+        # if userX and userY already have a strong ties, just return []
+        if userY in coauthornetX:
+            return ([], [], [])
+        
+        coauthornetY, cy = self.mycoauthorsbyyear(userY, year)
+        
+        # find the common nodes 
+        weaktienodes = list(set(coauthornetX).intersection(coauthornetY))
+        
+        nodescountX = []
+        nodescountY = []
+        
+        if weaktienodes:
+            for i in weaktienodes:
+                nodescountX.append(cx[coauthornetX.index(i)])
+                nodescountY.append(cy[coauthornetY.index(i)])
+            
+        
+        return (weaktienodes, nodescountX, nodescountY)
+    
+    """
+        2nd hoop connection
+    """
+    def secondhoopties(self, userX, userY, year):
+        result = []
+        coauthors1, count1 = self.mycoauthorsbyyear(userX, 2016)
+
+        for i in coauthors1:
+            coauthors2, count2 = self.mycoauthorsbyyear(i, 2016)
+            for n in coauthors2:
+                coauthors3, count3 = self.mycoauthorsbyyear(n, 2016)
+                if userY in coauthors3:
+                    result.append([[i,n],[count1[coauthors1.index(i)],count2[coauthors2.index(n)], count3[coauthors3.index(userY)]]])
+
+
+    """
+        Get all the content(paper titles) of the userIdx before 
+        the 'year'(include the year) 
+    """
+    def getcontentbyyear(self, userIdx, year):
+        titleIdx = self.authortitlesidx[userIdx]
+
+        titleIdx = np.array(titleIdx)
+
+        years = [self.years[i] for i in titleIdx]
+
+        years = np.array(years)
+        
+        # sort the years and put the latest year first
+        # then the content will also be sorted by recent paper first
+        years.sort()
+        years = years[::-1]
+
+        yearIdx = np.where(years<=year)[0]
+    
+        content = [self.titles[i] for i in titleIdx[yearIdx]]
+        
+        return content
+
+    """
+        return the most frequent participated venue of a user
+    """
+    def getVenue(self, userIdx):
+        venues = self.authorbooktitleidx[userIdx]
+        c = Counter(venues)
+        frqvenues = c.most_common()
+        
+        return frqvenues[0][0]
+
+    """
+        only consider the recent 10 papers
+    """
+    def contentsimilarity(self, userX, userY, year):
+        contentX = self.getcontentbyyear(userX, year)
+        if not contentX:
+            return -1
+        contentX = contentX[0:10]
+        
+        contentY = self.getcontentbyyear(userY, year)
+        if not contentY:
+            return -1
+        contentY = contentY[0:10]
+        
+        # build the corpus of all the content
+        contents = []
+        
+        
+        for i in contentX:
+            contents.extend(i.split(' '))
+        
+        lenx = len(contents)
+        
+        for i in contentY:
+            contents.extend(i.split(' '))
+        
+        #  normalize the different forms of words 
+        stemmer = nltk.stem.PorterStemmer()
+        stems = [stemmer.stem(t) for t in contents]           
+        
+        # reconstruct content for userX and userY use the normalized words
+        newcontentX = stems[0:lenx]
+        newcontentY = stems[lenx:]
+
+
+        
+        vectorizer = CountVectorizer()
+        v = vectorizer.fit_transform([' '.join(newcontentX), ' '.join(newcontentY)])
+        
+        cosinesimilarity = pairwise_distances(v[0], v[1], metric='cosine')[0][0]
+        
+        return cosinesimilarity
+
+    """
+        network similarity
+    """
+    def networksimilarity(self, userX, userY, year):
+        
+        # first calculate FG(userX) according to paper
+        # User similarities on social networks
+        coauthors, c = self.mycoauthorsbyyear(userX, year)
+        
+        edgesFG = len(coauthors)
+    
+        n = 0
+        for i in coauthors:
+            subcoauthors, c = self.mycoauthorsbyyear(i, year)
+            con = list(set(subcoauthors).intersection(coauthors[n:]))
+            edgesFG = edgesFG + len(con)
+            n = n + 1
+            
+        # second, calculate MFG(userX, userY)
+        weakties, cx, cy = self.weakties(userX, userY, year)
+        
+        edgesMFG = 2 * len(weakties)
+        
+        n = 0
+        for i in weakties:
+            subcoauthors, c = self.mycoauthorsbyyear(i, year)
+            con = list(set(subcoauthors).intersection(weakties[n:]))
+            edgesMFG = edgesMFG + len(con)
+            n = n + 1
+            
+        # last calculate the network similarity
+        
+        if edgesFG * edgesMFG:
+            ns = np.log(edgesMFG)/np.log(2 * edgesFG)
+        else:
+            ns = -1
+            
+        return (ns, edgesFG, edgesMFG, cx, cy)
+
+    """
+        text processing, normalize the words to their prototype, such as 
+        plural form, progressive, etc
+    """
+    def textnormalizing(self, text):
+        #l = len(text)
+        c = 0
+        for i in text:
+            # network - networks
+            if i[-1] == 's':
+                ii = i[:-1]
+                if ii in text:
+                    text[c] = ii
+                    c = c + 1
+                    continue
+                
+            # bus - buses
+            if i[-2:] == 'es':
+                ii = i[:-2]
+                if ii in text:
+                    text[c] = ii
+                    c = c + 1
+                    continue
+                
+            #  study - studies 
+            if i[-3:] == 'ies':
+                ii = i[:-3] + 'y'
+                if ii in text:
+                    text[c] = ii
+                    c = c + 1
+                    continue
+            
+            # network - networking
+            # get - getting
+            # explore - exploring 
+            if i[-3:] == 'ing':
+                ii = i[:-3]
+                if ii in text:
+                    text[c] = ii
+                    c = c + 1
+                    continue
+                
+                ii = i[:-4]
+                if ii in text:
+                    text[c] = ii
+                    c = c + 1
+                    continue
+                
+                ii = i[:-3] + 'e'
+                if ii in text:
+                    text[c] = c + 1
+                    continue
+                
+            c = c + 1
+            
+        return text
+                
+    """
+    """
+
+    
     """
     radius of the cluster
     """
@@ -551,8 +811,8 @@ class recommendationsys:
         self.debugmsg('start  titles \n', 0)
         f = codecs.open(self.f_titles,'r','utf-8')
         for line in f:   
-            # remove the '.,\n' at the end
-            line = line[:-3]
+            # remove the '\r\n' at the end
+            line = line[:-2]
             self.rawtitles.append(line)
             line = line.lower()
             newline=tokenizer.tokenize(line)
@@ -571,6 +831,7 @@ class recommendationsys:
         self.authorcontents = []
         self.authorrawcontents = []
         self.authortitlesidx = []
+        self.authorbooktitleidx = []
         self.coathors = []
         self.coauthorsidx = []
                 
@@ -583,16 +844,14 @@ class recommendationsys:
         self.years = []
         f = codecs.open(self.f_years,'r','utf-8')
         for line in f:
-            # remove the '\r\n'
-            line = line[:-2]
-            self.years.append(line)
+            self.years.append(int(line))
             
         # read conference 
         self.debugmsg('start  booktitle \n', 0)
         self.booktitle = []
         f = codecs.open(self.f_booktitle,'r','utf-8')
         for line in f:
-            # remove the '\r\n'
+            # remove the \r\n at the end
             line = line[:-2]
             self.booktitle.append(line)
         
@@ -602,10 +861,10 @@ class recommendationsys:
         m = 0
         f = codecs.open(self.f_authors,'r','utf-8')
         for line in f:
+            # remove the last '\r\n' 
+            #newline = newline[:-2]
             # split the authors by ','
             newline = line.split(",")
-            # remove the last '\n' 
-            newline.remove('\r\n')
             namelist = newline
             self.coathors.append(namelist)           
             
@@ -636,6 +895,7 @@ class recommendationsys:
                 idx = self.authordict.get(name)
                 if idx is not None:
                     self.authortitlesidx[idx].append(i)
+                    self.authorbooktitleidx[idx].append(i)
                     #self.authorcontents[idx] = ' '.join([self.authorcontents[idx],self.titles[i]])
                     #self.authorrawcontents[idx] = ' '.join([self.authorrawcontents[idx],self.rawtitles[i]])
                     #self.authorcontents[idx].append(self.titles[i])
@@ -654,6 +914,7 @@ class recommendationsys:
                     self.authorrawcontents.append(self.rawtitles[i])
                     
                     self.authortitlesidx.append([i])
+                    self.authorbooktitleidx.append([i])
                     #idx = self.authors.index(name)
                     #print 'idx: ' + str(idx) + ' m: ' + str(m)
                     idx = m
@@ -766,12 +1027,17 @@ class recommendationsys:
         self.debugmsg('find the idx', 0)
         if isinstance(name, unicode):
              #idx = self.authors.index(name)
+             name = ud.normalize('NFC',name)
              authorIdx = self.authordict.get(name)
         else:
-             #idx = self.authors.index(name.decode('utf-8'))  
-             authorIdx = self.authordict.get(name.decode('utf-8'))
+             #idx = self.authors.index(name.decode('utf-8')) 
              name = name.decode('utf-8')
+             name = ud.normalize('NFC',name)
+             authorIdx = self.authordict.get(name)
+             
         #content=[]
+    
+    
     
         self.myidx = authorIdx  
         self.debugmsg('get the feature vector', 0)
@@ -819,9 +1085,9 @@ class recommendationsys:
                     #self.debugmsg('search backward ' + str(i), 0)
         
 
-    	# randomlize the order of the recommendations
-	random.shuffle(recommendations)
-    
+        # randomlize the order of the recommendations
+        random.shuffle(recommendations)
+        
         self.result=OrderedDict([("name",name),("recommendations",recommendations)])        
         self.debugmsg('end recommendationV3 \n', 0)
         return self.result    

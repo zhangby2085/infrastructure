@@ -6,19 +6,24 @@ Created on Thu Jun 15 14:17:11 2017
 """
 import sys
 import subprocess
+import os 
 
 from recommendationsys import recommendationsys
 
 def runremd(user, arg):
-    cmd=['./extractconferencedata.sh']
-    subprocess.call(cmd+arg)
+    
+    f_titles='./'+arg[0]+'/titlesLF.txt'
+    f_authors='./'+arg[0]+'/authorsLF.txt'
+    f_years='./'+arg[0]+'/yearsLF.txt'
+    f_booktitles='./'+arg[0]+'/booktitlesLF.txt'
 
-    f_titles='./'+arg[0]+'/titles.txt'
-    f_authors='./'+arg[0]+'/authors.txt'
-    f_years='./'+arg[0]+'/years.txt'
-    f_booktitles='./'+arg[0]+'/booktitles.txt'
-
-
+    if not (os.path.exists(f_titles) and os.path.exists(f_authors) and os.path.exists(f_years) and os.path.exists(f_booktitles)):
+        print 'Extract conference data\n'
+        cmd=['./extractconferencedata.sh']
+        subprocess.call(cmd+arg)
+    else:
+        print 'Data exist, Start recommendation system ...\n'
+    
     remd = recommendationsys(f_titles,f_authors, f_years, f_booktitles, 10, 3, 2013)
 
     recommendauthors = remd.recommendationV3(user,3)

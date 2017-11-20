@@ -34,8 +34,7 @@ if [ ! -d ./title_author_conf_year ]; then
         python ./getAuthor.py
         python ./getYear.py
         tr -d '\r' < booktitle.txt >  booktitleLF.txt
-        rm booktitle.txt
-        mv *txt title_author_conf_year
+        mv *LF.txt title_author_conf_year
 fi
 
 # ------------------------------------
@@ -102,7 +101,15 @@ printf "start processing....\n"
 awk 'FNR==NR{line[$0]=$0; next} FNR in line' ./"$username"/idx2 ./title_author_conf_year/title.txt >> ./"$username"/titles.txt
 awk 'FNR==NR{line[$0]=$0; next} FNR in line' ./"$username"/idx2 ./title_author_conf_year/authors.txt >> ./"$username"/authors.txt
 awk 'FNR==NR{line[$0]=$0; next} FNR in line' ./"$username"/idx2 ./title_author_conf_year/year.txt >> ./"$username"/years.txt
-awk 'FNR==NR{line[$0]=$0; next} FNR in line' ./"$username"/idx2 ./title_author_conf_year/booktitleLF.txt >> ./"$username"/booktitles.txt
+awk 'FNR==NR{line[$0]=$0; next} FNR in line' ./"$username"/idx2 ./title_author_conf_year/booktitleLF.txt >> ./"$username"/booktitlesLF.txt
 
 # remove the " in the author.txt
 sed -i -e 's/"//g' ./"$username"/authors.txt
+
+
+# change the text file to Linux file
+
+tr -d '\r' < ./"$username"/titles.txt >  ./"$username"/titlesLF.txt
+tr -d '\r' < ./"$username"/authors.txt >  ./"$username"/authorsLF.txt
+tr -d '\r' < ./"$username"/years.txt >  ./"$username"/yearsLF.txt
+

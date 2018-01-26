@@ -7,7 +7,8 @@ from pymongo import MongoClient
 
 PROJECT_DIRECTORY = 'output/project/' + project_name
 
-NETWORK_FILE_NAME = PROJECT_DIRECTORY + '/mention_filtered_intranetwork_retweet_and_others_v2.gexf'
+#NETWORK_FILE_NAME = PROJECT_DIRECTORY + '/mention_filtered_intranetwork_retweet_and_others_v2.gexf'
+NETWORK_FILE_NAME = PROJECT_DIRECTORY + '/mention_network.gexf'
 
 TWEETS_COUNT = PROJECT_DIRECTORY + '/followers_tweets_count.json'
 MENTIONNAME_COUNT = PROJECT_DIRECTORY + '/followers_mentionname_count.json'

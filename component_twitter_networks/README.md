@@ -1,5 +1,5 @@
 # ABOUT
-This repository contains the code to collect the followers and followers's tweets of the target(s) account. Then performan a people recommendation for a given user who is one of the followers.
+This repository contains the code to collect the followers and followers's tweets of the target(s) account. Then performan a people recommendation for a given user who is one of the followers.  
 The tasks include:
 1. collect followers and their tweets, save into MongoDB
 2. Language detection for each tweet
@@ -8,15 +8,15 @@ The tasks include:
 5. Perform people recommendation using basic TF-IDF features on English-only tweets
 
 # Environment
-Dev and test on:
-OS: OSX Version 10.12.6
-Python:
+Dev and test on:  
+OS: OSX Version 10.12.6  
+Python:  
 - Python 3.5.4
 - Python 2.7.13 ( Only used by Humanizer for follower identity classification)
 
-conda: 4.3.21
-langdetect: 1.0.7
-Humanizr: https://github.com/networkdynamics/humanizr
+conda: 4.3.21  
+langdetect: 1.0.7  
+Humanizr: https://github.com/networkdynamics/humanizr  
 
 # HOW TO
 ### Collect Data

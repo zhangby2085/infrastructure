@@ -34,12 +34,13 @@ id_name_collection_name = 'id_name'
 # the most number of tweets to collect for each follower
 tweet_num = 300
 
-# the least number of tweets to process
-tweet_process_num = 5
+# the most number of tweets to process
+tweet_process_num = 100
 
 # this setting is used in data clean phase to filter out those who have 
-# less tweets than this threshold
-threshold_num = '1'
+# less tweets with the specifical language than this threshold
+# NOTE! Should be equal or less than 'tweet_process_num'
+threshold_num = '20'
 
 # set the target language
 lan = 'en'

@@ -1409,7 +1409,8 @@ class recommendationsys:
     """
     """
     def save_json(self,filename):  
-        with io.open(filename+'.json','w',encoding="utf-8") as outfile:
+        PROJECT_DIRECTORY = 'output/project/' + project_name + '/'
+        with io.open(PROJECT_DIRECTORY + filename +'.json','w',encoding="utf-8") as outfile:
             outfile.write((json.dumps((self.result), ensure_ascii=False)))
    
         
